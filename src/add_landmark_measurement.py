@@ -8,8 +8,23 @@ ODOMETRY_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.2, 0.2, 0.1]))  # 
 MEASUREMENT_NOISE = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.05, 0.1]))  # (bearing, range)
 
 def add_landmark_measurement(graph, initial_estimate, result):
-    # Determine the correct rotation (bearing) and distance from X(4) to L(2) 
-    # rotation = 
-    # distance = 
-    graph.add(gtsam.BearingRangeFactor2D(X(4), L(2), gtsam.Rot2.fromDegrees(rotation), distance, MEASUREMENT_NOISE))
+    # get estimated position
+    pose_4 = result.atPose2(X(4))
+    point_l2 = result.atPoint2(L(2)) # returning numpy array [x, y]
+
+    # Transform landmark point into the robot's local coordinate frame
+    local_point = pose_4.transformTo(point_l2)
+
+    # Extract range and bearing
+    dx = local_point[0]
+    dy = local_point[1]
+    
+    distance = math.sqrt(dx**2 + dy**2)
+    rotation_rad = math.atan2(dy, dx)
+    
+    # 4. Add the BearingRangeFactor2D
+    graph.add(gtsam.BearingRangeFactor2D(
+        X(4), L(2), gtsam.Rot2(rotation_rad), distance, MEASUREMENT_NOISE
+    ))
+
     return graph
